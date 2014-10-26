@@ -249,7 +249,7 @@ namespace ReShade.Setup
 				{
 					this.mFinished = true;
 					this.Title = "Failed!";
-					this.Message.Content = "Cannot decided which effect files to use.";
+					this.Message.Content = "Cannot decide which effect file to use.";
 					this.Progress.Visibility = Visibility.Collapsed;
 				});
 
