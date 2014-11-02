@@ -241,30 +241,16 @@ namespace ReShade.Setup
 			List<Tuple<string, string>> files = new List<Tuple<string, string>>();
 			files.Add(new Tuple<string, string>(pathDll, pathModule));
 
-			string[] effects = Directory.GetFiles(".", "*.fx");
-
-			if (effects.Length > 1)
+			foreach (string file in Directory.EnumerateFiles(".", "*.fx"))
 			{
-				this.Dispatcher.Invoke(delegate()
-				{
-					this.mFinished = true;
-					this.Title = "Failed!";
-					this.Message.Content = "Cannot decide which effect file to use.";
-					this.Progress.Visibility = Visibility.Collapsed;
-				});
-
-				return;
-			}
-			else if (effects.Length == 1)
-			{
-				files.Add(new Tuple<string, string>(effects[0], Path.Combine(Path.GetDirectoryName(pathModule), Path.GetFileNameWithoutExtension(nameModule) + ".fx")));
+				files.Add(new Tuple<string, string>(file, Path.Combine(Path.GetDirectoryName(pathModule), file)));
 			}
 
 			if (Directory.Exists("SweetFX"))
 			{
 				foreach (string file in Directory.EnumerateFiles("SweetFX", "*", SearchOption.AllDirectories).Select(f => f))
 				{
-					files.Add(new Tuple<string, string>(file, Path.GetDirectoryName(pathModule) + Path.DirectorySeparatorChar + file));
+					files.Add(new Tuple<string, string>(file, Path.Combine(Path.GetDirectoryName(pathModule), file)));
 				}
 			}
 
