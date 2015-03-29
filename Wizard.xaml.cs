@@ -241,14 +241,14 @@ namespace ReShade.Setup
 			List<Tuple<string, string>> files = new List<Tuple<string, string>>();
 			files.Add(new Tuple<string, string>(pathDll, pathModule));
 
-			foreach (string file in Directory.EnumerateFiles(".", "*.fx"))
+			if (File.Exists("ReShade.fx"))
 			{
-				files.Add(new Tuple<string, string>(file, Path.Combine(Path.GetDirectoryName(pathModule), file)));
+				files.Add(new Tuple<string, string>("ReShade.fx", Path.Combine(Path.GetDirectoryName(pathModule), "ReShade.fx")));
 			}
 
-			if (Directory.Exists("SweetFX"))
+			if (Directory.Exists("ReShade"))
 			{
-				foreach (string file in Directory.EnumerateFiles("SweetFX", "*", SearchOption.AllDirectories).Select(f => f))
+				foreach (string file in Directory.EnumerateFiles("ReShade", "*", SearchOption.AllDirectories).Select(f => f))
 				{
 					files.Add(new Tuple<string, string>(file, Path.Combine(Path.GetDirectoryName(pathModule), file)));
 				}
