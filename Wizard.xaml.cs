@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Threading;
 using System.Windows;
 using System.Windows.Documents;
+using System.ComponentModel;
 using Microsoft.Win32;
 
 namespace ReShade.Setup
@@ -35,6 +36,11 @@ namespace ReShade.Setup
 				Thread worker = new Thread(delegate() { Install(args[1]); });
 				worker.Start();
 			}
+		}
+		private void OnClosing(object sender, CancelEventArgs e)
+		{
+			this.mFinished = true;
+			this.mApiCondition.Set();
 		}
 		private void OnButton(object sender, RoutedEventArgs e)
 		{
@@ -103,8 +109,7 @@ namespace ReShade.Setup
 			{
 				this.Dispatcher.Invoke(delegate()
 				{
-					this.mFinished = true;
-					this.Title = "Failed!";
+					this.Title = "Warning!";
 					this.Message.Content = "Auto-detection failed. Please select:";
 					this.Progress.Visibility = Visibility.Collapsed;
 					this.ApiGroup.IsEnabled = true;
@@ -135,7 +140,7 @@ namespace ReShade.Setup
 				});
 			}
 
-			if (nameModule == null)
+			if (nameModule == null || this.mFinished)
 			{
 				return;
 			}

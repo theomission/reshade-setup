@@ -1,6 +1,6 @@
 ﻿<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:spark="clr-namespace:WPFSpark"
         x:Class="ReShade.Setup.Wizard"
-        Title="Welcome" Height="146" Width="500" ResizeMode="NoResize" Loaded="OnLoaded">
+        Title="Welcome" Height="146" Width="500" ResizeMode="NoResize" Loaded="OnLoaded" Closing="OnClosing">
     <DockPanel LastChildFill="True">
         <Border x:Name="ApiGroup" DockPanel.Dock="Bottom" IsEnabled="False" VerticalAlignment="Top" Margin="5,0,5,5" BorderThickness="1" CornerRadius="3" Padding="5" BorderBrush="White">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
