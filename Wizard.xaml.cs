@@ -20,8 +20,8 @@ namespace ReShade.Setup
 			Directory.SetCurrentDirectory(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location));
 		}
 
-		private string mGamePath = null;
 		private bool mFinished = false;
+		private string mGamePath = null;
 		private ManualResetEventSlim mApiCondition = new ManualResetEventSlim();
 
 		private void OnLoaded(object sender, RoutedEventArgs e)
@@ -50,7 +50,7 @@ namespace ReShade.Setup
 			}
 
 			OpenFileDialog dlg = new OpenFileDialog();
-			dlg.Filter = "Games|*.exe";
+			dlg.Filter = "Applications|*.exe";
 			dlg.DefaultExt = ".exe";
 			dlg.Multiselect = false;
 			dlg.ValidateNames = true;
@@ -69,76 +69,6 @@ namespace ReShade.Setup
 			this.mApiCondition.Set();
 		}
 
-		public bool AnalyzeExe(string path, out bool is64Bit, out string module)
-		{
-			PEInfo exeInfo = new PEInfo(path);
-			is64Bit = exeInfo.Type == PEInfo.BinaryType.SCS_64BIT_BINARY;
-
-			var res = exeInfo.Imports.FirstOrDefault(s =>
-				s.Item1.StartsWith("d3d8", StringComparison.OrdinalIgnoreCase) ||
-				s.Item1.StartsWith("d3d9", StringComparison.OrdinalIgnoreCase) ||
-				s.Item1.StartsWith("dxgi", StringComparison.OrdinalIgnoreCase) ||
-				s.Item1.StartsWith("opengl32", StringComparison.OrdinalIgnoreCase));
-
-			if (res != null)
-			{
-				module = res.Item1;
-			}
-			else
-			{
-				module = null;
-			}
-
-			return module != null;
-		}
-		public bool AnalyzeRuntime(string path, out string module)
-		{
-			module = null;
-
-			ProcessStartInfo info = new ProcessStartInfo(path);
-			info.WindowStyle = ProcessWindowStyle.Hidden;
-			info.CreateNoWindow = true;
-
-			using (Process process = Process.Start(info))
-			{
-				while (module == null && (DateTime.Now - process.StartTime).Seconds < 5)
-				{
-					Thread.Sleep(500);
-
-					string[] modules;
-
-					try
-					{
-						modules = ProcessEx.GetProcessModules(process.Id);
-					}
-					catch (ApplicationException)
-					{
-						continue;
-					}
-
-					foreach (string file in modules)
-					{
-						string name = Path.GetFileName(file);
-
-						if (name.StartsWith("d3d8", StringComparison.OrdinalIgnoreCase) ||
-							name.StartsWith("d3d9", StringComparison.OrdinalIgnoreCase) ||
-							name.StartsWith("dxgi", StringComparison.OrdinalIgnoreCase) ||
-							name.StartsWith("opengl32", StringComparison.OrdinalIgnoreCase))
-						{
-							module = name;
-							break;
-						}
-					}
-				}
-
-				if (!process.HasExited)
-				{
-					process.Kill();
-				}
-			}
-
-			return module != null;
-		}
 		public void Install(string path)
 		{
 			FileVersionInfo info = FileVersionInfo.GetVersionInfo(path);
@@ -155,46 +85,59 @@ namespace ReShade.Setup
 			});
 
 			#region Analyze Game
-			bool is64Bit;
-			string nameModule;
+			string nameModule = null;
+			PEInfo exeInfo = new PEInfo(path);
+			bool is64Bit = exeInfo.Type == PEInfo.BinaryType.SCS_64BIT_BINARY;
 
-			if (!AnalyzeExe(path, out is64Bit, out nameModule))
+			var res = exeInfo.Imports.FirstOrDefault(s =>
+				s.Item1.StartsWith("d3d8", StringComparison.OrdinalIgnoreCase) ||
+				s.Item1.StartsWith("d3d9", StringComparison.OrdinalIgnoreCase) ||
+				s.Item1.StartsWith("dxgi", StringComparison.OrdinalIgnoreCase) ||
+				s.Item1.StartsWith("opengl32", StringComparison.OrdinalIgnoreCase));
+
+			if (res != null)
 			{
-				if (!AnalyzeRuntime(path, out nameModule))
+				nameModule = res.Item1;
+			}
+			else
+			{
+				this.Dispatcher.Invoke(delegate()
 				{
-					this.Dispatcher.Invoke(delegate()
+					this.mFinished = true;
+					this.Title = "Failed!";
+					this.Message.Content = "Auto-detection failed. Please select:";
+					this.Progress.Visibility = Visibility.Collapsed;
+					this.ApiGroup.IsEnabled = true;
+				});
+
+				this.mApiCondition.Wait();
+
+				this.Dispatcher.Invoke(delegate()
+				{
+					if (this.ApiDirect3D8.IsChecked.Value)
 					{
-						this.mFinished = true;
-						this.Title = "Failed!";
-						this.Message.Content = "Auto-detection failed.";
-						this.Progress.Visibility = Visibility.Collapsed;
-						this.ApiGroup.IsEnabled = true;
-					});
-
-					this.mApiCondition.Wait();
-
-					this.Dispatcher.Invoke(delegate()
+						nameModule = "d3d8.dll";
+					}
+					else if (this.ApiDirect3D9.IsChecked.Value)
 					{
-						if (this.ApiDirect3D8.IsChecked.Value)
-						{
-							nameModule = "d3d8.dll";
-						}
-						else if (this.ApiDirect3D9.IsChecked.Value)
-						{
-							nameModule = "d3d9.dll";
-						}
-						else if (this.ApiDirectXGI.IsChecked.Value)
-						{
-							nameModule = "dxgi.dll";
-						}
-						else if (this.ApiOpenGL.IsChecked.Value)
-						{
-							nameModule = "opengl32.dll";
-						}
+						nameModule = "d3d9.dll";
+					}
+					else if (this.ApiDirectXGI.IsChecked.Value)
+					{
+						nameModule = "dxgi.dll";
+					}
+					else if (this.ApiOpenGL.IsChecked.Value)
+					{
+						nameModule = "opengl32.dll";
+					}
 
-						this.ApiGroup.IsEnabled = false;
-					});
-				}
+					this.ApiGroup.IsEnabled = false;
+				});
+			}
+
+			if (nameModule == null)
+			{
+				return;
 			}
 
 			this.Dispatcher.Invoke(delegate()
@@ -234,6 +177,13 @@ namespace ReShade.Setup
 					});
 
 					return;
+				}
+
+				string pathModuleFx = Path.ChangeExtension(pathModule, "fx");
+
+				if (File.Exists(pathModuleFx))
+				{
+					File.Delete(pathModuleFx);
 				}
 			}
 
