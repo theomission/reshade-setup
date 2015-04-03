@@ -25,6 +25,7 @@
     <IntermediateOutputPath>C:\Users\Patrick\AppData\Local\Temp\vsD9A7.tmp\Debug\</IntermediateOutputPath>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <UseVSHostingProcess>true</UseVSHostingProcess>
+    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -33,6 +34,7 @@
     <IntermediateOutputPath>C:\Users\Patrick\AppData\Local\Temp\vsD9A7.tmp\Release\</IntermediateOutputPath>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <UseVSHostingProcess>false</UseVSHostingProcess>
+    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup />
   <PropertyGroup>
