@@ -1,14 +1,13 @@
-﻿using System;
+﻿using Microsoft.Win32;
+using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Threading;
 using System.Windows;
 using System.Windows.Documents;
-using System.ComponentModel;
-using Microsoft.Win32;
 
 namespace ReShade.Setup
 {
@@ -17,33 +16,19 @@ namespace ReShade.Setup
 		public Wizard()
 		{
 			InitializeComponent();
-
-			Directory.SetCurrentDirectory(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location));
 		}
 
 		private bool mFinished = false;
 		private string mGamePath = null;
 		private ManualResetEventSlim mApiCondition = new ManualResetEventSlim();
 
+		private void OnSourceInitialized(object sender, EventArgs e)
+		{
+			Glass.RemoveIcon(this);
+			Glass.ExtendFrame(this);
+		}
 		private void OnLoaded(object sender, RoutedEventArgs e)
 		{
-			Glass.ExtendFrame(this);
-
-			bool isRedistributableInstalled = File.Exists(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "msvcp110.dll"));
-
-			if (Environment.Is64BitOperatingSystem)
-			{
-				isRedistributableInstalled = isRedistributableInstalled && File.Exists(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.SystemX86), "msvcp110.dll"));
-			}
-
-			if (!isRedistributableInstalled)
-			{
-				MessageBox.Show(this, "Unable to find the Microsoft Visual C++ 2012 Redistributable on your system. Please install " + (Environment.Is64BitOperatingSystem ? "both the x86 and x64" : "the x86") + " version first!", "Missing Visual C++ Redistributable", MessageBoxButton.OK, MessageBoxImage.Error);
-
-				Close();
-				return;
-			}
-			
 			string[] args = Environment.GetCommandLineArgs();
 
 			if (args.Length == 2 && File.Exists(args[1]))
