@@ -19,7 +19,7 @@ namespace ReShade.Setup
 		}
 
 		private bool mFinished = false;
-		private string mGamePath = null;
+		private string mTargetPath = null;
 		private ManualResetEventSlim mApiCondition = new ManualResetEventSlim();
 
 		private void OnSourceInitialized(object sender, EventArgs e)
@@ -33,8 +33,7 @@ namespace ReShade.Setup
 
 			if (args.Length == 2 && File.Exists(args[1]))
 			{
-				Thread worker = new Thread(delegate() { Install(args[1]); });
-				worker.Start();
+				new Thread(delegate() { Install(args[1]); }).Start();
 			}
 		}
 		private void OnClosing(object sender, CancelEventArgs e)
@@ -44,10 +43,10 @@ namespace ReShade.Setup
 		}
 		private void OnButton(object sender, RoutedEventArgs e)
 		{
-			if (this.mFinished && !String.IsNullOrEmpty(this.mGamePath))
+			if (this.mFinished && !String.IsNullOrEmpty(this.mTargetPath))
 			{
-				ProcessStartInfo info = new ProcessStartInfo(this.mGamePath);
-				info.WorkingDirectory = Path.GetDirectoryName(this.mGamePath);
+				ProcessStartInfo info = new ProcessStartInfo(this.mTargetPath);
+				info.WorkingDirectory = Path.GetDirectoryName(this.mTargetPath);
 
 				Process.Start(info);
 
@@ -66,8 +65,7 @@ namespace ReShade.Setup
 
 			if (result.HasValue && result.Value)
 			{
-				Thread worker = new Thread(delegate() { Install(dlg.FileName); });
-				worker.Start();
+				new Thread(delegate() { Install(dlg.FileName); }).Start();
 			}
 		}
 		private void OnApiChecked(object sender, RoutedEventArgs e)
@@ -82,7 +80,7 @@ namespace ReShade.Setup
 	
 			this.Dispatcher.Invoke(delegate()
 			{
-				this.mGamePath = path;
+				this.mTargetPath = path;
 				this.Title = "Installing to " + name + " ...";
 				this.Button.IsEnabled = false;
 				this.Message.Content = "Analyzing " + name + " ...";
@@ -91,21 +89,16 @@ namespace ReShade.Setup
 			});
 
 			#region Analyze Game
-			string nameModule = null;
 			PEInfo exeInfo = new PEInfo(path);
 			bool is64Bit = exeInfo.Type == PEInfo.BinaryType.SCS_64BIT_BINARY;
 
-			var res = exeInfo.Imports.FirstOrDefault(s =>
-				s.Item1.StartsWith("d3d8", StringComparison.OrdinalIgnoreCase) ||
-				s.Item1.StartsWith("d3d9", StringComparison.OrdinalIgnoreCase) ||
-				s.Item1.StartsWith("dxgi", StringComparison.OrdinalIgnoreCase) ||
-				s.Item1.StartsWith("opengl32", StringComparison.OrdinalIgnoreCase));
+			string nameModule = exeInfo.Modules.FirstOrDefault(s =>
+				s.StartsWith("d3d8", StringComparison.OrdinalIgnoreCase) ||
+				s.StartsWith("d3d9", StringComparison.OrdinalIgnoreCase) ||
+				s.StartsWith("dxgi", StringComparison.OrdinalIgnoreCase) ||
+				s.StartsWith("opengl32", StringComparison.OrdinalIgnoreCase));
 
-			if (res != null)
-			{
-				nameModule = res.Item1;
-			}
-			else
+			if (nameModule == null)
 			{
 				this.Dispatcher.Invoke(delegate()
 				{
@@ -228,7 +221,7 @@ namespace ReShade.Setup
 					
 					if (Directory.Exists(sourcePath))
 					{
-						DirectoryCopy(sourcePath, destinationPath, true, true);
+						DirectoryHelper.Copy(sourcePath, destinationPath, true, true);
 					}
 					else
 					{
@@ -258,38 +251,6 @@ namespace ReShade.Setup
 				this.Message.Content = "Run " + name;
 				this.Progress.Visibility = Visibility.Collapsed;
 			});
-		}
-
-		private static void DirectoryCopy(string sourceDirName, string destDirName, bool recursive, bool overwrite)
-		{
-			// Adapted from http://msdn.microsoft.com/en-us/library/bb762914.aspx
-			DirectoryInfo dir = new DirectoryInfo(sourceDirName);
-			DirectoryInfo[] dirs = dir.GetDirectories();
-
-			if (!dir.Exists)
-			{
-				throw new DirectoryNotFoundException("Source directory does not exist or could not be found: " + sourceDirName);
-			}
-
-			if (!Directory.Exists(destDirName))
-			{
-				Directory.CreateDirectory(destDirName);
-			}
-
-			FileInfo[] files = dir.GetFiles();
-
-			foreach (FileInfo file in files)
-			{
-				file.CopyTo(Path.Combine(destDirName, file.Name), overwrite);
-			}
-
-			if (recursive)
-			{
-				foreach (DirectoryInfo subdir in dirs)
-				{
-					DirectoryCopy(subdir.FullName, Path.Combine(destDirName, subdir.Name), recursive, overwrite);
-				}
-			}
 		}
 	}
 }

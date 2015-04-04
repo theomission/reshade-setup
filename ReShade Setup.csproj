@@ -52,6 +52,7 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="Helpers\Directory.cs" />
     <Compile Include="Helpers\Glass.cs" />
     <Compile Include="Helpers\SprocketControl.cs" />
     <Compile Include="Wizard.xaml.cs">
