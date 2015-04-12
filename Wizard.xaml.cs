@@ -90,7 +90,7 @@ namespace ReShade.Setup
 
 			#region Analyze Game
 			PEInfo exeInfo = new PEInfo(path);
-			bool is64Bit = exeInfo.Type == PEInfo.BinaryType.SCS_64BIT_BINARY;
+			bool is64Bit = exeInfo.Type == PEInfo.BinaryType.IMAGE_FILE_MACHINE_AMD64;
 
 			string nameModule = exeInfo.Modules.FirstOrDefault(s =>
 				s.StartsWith("d3d8", StringComparison.OrdinalIgnoreCase) ||
@@ -197,6 +197,13 @@ namespace ReShade.Setup
 			if (Directory.Exists("ReShade"))
 			{
 				foreach (string file in Directory.EnumerateFiles("ReShade", "*", SearchOption.AllDirectories).Select(f => f))
+				{
+					files.Add(new Tuple<string, string>(file, Path.Combine(Path.GetDirectoryName(pathModule), file)));
+				}
+			}
+			if (Directory.Exists("SweetFX"))
+			{
+				foreach (string file in Directory.EnumerateFiles("SweetFX", "*", SearchOption.AllDirectories).Select(f => f))
 				{
 					files.Add(new Tuple<string, string>(file, Path.Combine(Path.GetDirectoryName(pathModule), file)));
 				}

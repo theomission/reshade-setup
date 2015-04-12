@@ -9,54 +9,69 @@ using System.Security;
 
 public unsafe class PEInfo
 {
-	public enum BinaryType : uint
+	public enum BinaryType : ushort
 	{
-		SCS_32BIT_BINARY = 0, // A 32-bit Windows-based application
-		SCS_64BIT_BINARY = 6, // A 64-bit Windows-based application.
-		SCS_DOS_BINARY = 1, // An MS-DOS – based application
-		SCS_OS216_BINARY = 5, // A 16-bit OS/2-based application
-		SCS_PIF_BINARY = 3, // A PIF file that executes an MS-DOS – based application
-		SCS_POSIX_BINARY = 4, // A POSIX – based application
-		SCS_WOW_BINARY = 2 // A 16-bit Windows-based application
+		IMAGE_FILE_MACHINE_UNKNOWN = 0x0,
+		IMAGE_FILE_MACHINE_I386 = 0x14c,
+		IMAGE_FILE_MACHINE_AMD64 = 0x8664,
 	}
 
 	[StructLayout(LayoutKind.Sequential)]
 	private struct LOADED_IMAGE
 	{
-		public IntPtr moduleName;
+		public IntPtr ModuleName;
 		public IntPtr hFile;
 		public IntPtr MappedAddress;
 		public IntPtr FileHeader;
-		public IntPtr lastRvaSection;
-		public UInt32 numbOfSections;
-		public IntPtr firstRvaSection;
-		public UInt32 charachteristics;
-		public ushort systemImage;
-		public ushort dosImage;
-		public ushort readOnly;
-		public ushort version;
-		public IntPtr links_1;
-		public IntPtr links_2;
-		public UInt32 sizeOfImage;
+		public IntPtr LastRvaSection;
+		public UInt32 NumberOfSections;
+		public IntPtr Sections;
+		public UInt32 Characteristics;
+		public ushort fSystemImage;
+		public ushort fDOSImage;
+		public ushort fReadOnly;
+		public ushort Version;
+		public IntPtr Flink;
+		public IntPtr BLink;
+		public UInt32 SizeOfImage;
+	}
+	[StructLayout(LayoutKind.Explicit)]
+	private struct IMAGE_NT_HEADERS
+	{
+		[FieldOffset(0)]
+		public UInt32 Signature;
+		[FieldOffset(4)]
+		public IMAGE_FILE_HEADER FileHeader;
+	}
+	[StructLayout(LayoutKind.Sequential)]
+	private struct IMAGE_FILE_HEADER
+	{
+		public BinaryType Machine;
+		public UInt16 NumberOfSections;
+		public UInt32 TimeDateStamp;
+		public UInt32 PointerToSymbolTable;
+		public UInt32 NumberOfSymbols;
+		public UInt16 SizeOfOptionalHeader;
+		public UInt16 Characteristics;
 	}
 	[StructLayout(LayoutKind.Explicit)]
 	private struct IMAGE_IMPORT_DESCRIPTOR
 	{
 		#region union
 		[FieldOffset(0)]
-		public uint Characteristics;
+		public UInt32 Characteristics;
 		[FieldOffset(0)]
-		public uint OriginalFirstThunk;
+		public UInt32 OriginalFirstThunk;
 		#endregion
 
 		[FieldOffset(4)]
-		public uint TimeDateStamp;
+		public UInt32 TimeDateStamp;
 		[FieldOffset(8)]
-		public uint ForwarderChain;
+		public UInt32 ForwarderChain;
 		[FieldOffset(12)]
-		public uint Name;
+		public UInt32 Name;
 		[FieldOffset(16)]
-		public uint FirstThunk;
+		public UInt32 FirstThunk;
 	}
 
 	[DllImport("dbghelp"), SuppressUnmanagedCodeSecurity]
@@ -65,32 +80,30 @@ public unsafe class PEInfo
 	private static extern IntPtr ImageRvaToVa(IntPtr pNtHeaders, IntPtr pBase, uint rva, IntPtr pLastRvaSection);
 	[DllImport("imagehlp"), SuppressUnmanagedCodeSecurity]
 	private static extern bool MapAndLoad(string imageName, string dllPath, out LOADED_IMAGE loadedImage, bool dotDll, bool readOnly);
-	[DllImport("kernel32"), SuppressUnmanagedCodeSecurity]
-	private static extern bool GetBinaryType(string lpApplicationName, out BinaryType lpBinaryType);
 
-	private readonly BinaryType mBinaryType;
+	private readonly BinaryType mBinaryType = BinaryType.IMAGE_FILE_MACHINE_UNKNOWN;
 	private readonly List<string> mModules = new List<string>();
 
 	public PEInfo(string path)
 	{
-		GetBinaryType(path, out this.mBinaryType);
-
 		LOADED_IMAGE image;
 
 		if (MapAndLoad(path, null, out image, true, true) && image.MappedAddress != IntPtr.Zero)
 		{
 			uint size;
-			var pImportDir = (IMAGE_IMPORT_DESCRIPTOR*)ImageDirectoryEntryToData((void*)image.MappedAddress, false, 1, out size);
+			var imports = (IMAGE_IMPORT_DESCRIPTOR*)ImageDirectoryEntryToData((void*)image.MappedAddress, false, 1, out size);
 
-			if (pImportDir != null)
+			if (imports != null)
 			{
-				while (pImportDir->OriginalFirstThunk != 0)
+				while (imports->OriginalFirstThunk != 0)
 				{
-					this.mModules.Add(Marshal.PtrToStringAnsi(ImageRvaToVa(image.FileHeader, image.MappedAddress, pImportDir->Name, IntPtr.Zero)));
+					this.mModules.Add(Marshal.PtrToStringAnsi(ImageRvaToVa(image.FileHeader, image.MappedAddress, imports->Name, IntPtr.Zero)));
 
-					++pImportDir;
+					++imports;
 				}
 			}
+
+			this.mBinaryType = ((IMAGE_NT_HEADERS*)image.FileHeader)->FileHeader.Machine;
 		}
 	}
 
