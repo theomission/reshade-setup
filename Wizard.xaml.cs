@@ -193,6 +193,10 @@ namespace ReShade.Setup
 			{
 				files.Add(new Tuple<string, string>("ReShade.fx", Path.Combine(Path.GetDirectoryName(pathModule), "ReShade.fx")));
 			}
+			if (File.Exists("Sweet.fx"))
+			{
+				files.Add(new Tuple<string, string>("Sweet.fx", Path.Combine(Path.GetDirectoryName(pathModule), "Sweet.fx")));
+			}
 
 			if (Directory.Exists("ReShade"))
 			{
