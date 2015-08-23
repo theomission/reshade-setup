@@ -1,6 +1,6 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 11.00
-# Visual Studio 2012
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2013
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReShade Setup", "ReShade Setup.csproj", "{3B7009FA-0B09-4F27-8126-0885E66A5679}"
 EndProject
 Global
