@@ -1,13 +1,14 @@
-﻿using Microsoft.Win32;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
 using System.Windows;
 using System.Windows.Documents;
+using Microsoft.Win32;
 
 namespace ReShade.Setup
 {
@@ -18,6 +19,7 @@ namespace ReShade.Setup
 			InitializeComponent();
 		}
 
+		private bool mElevated = false;
 		private bool mFinished = false;
 		private string mTargetPath = null;
 		private ManualResetEventSlim mApiCondition = new ManualResetEventSlim();
@@ -31,7 +33,17 @@ namespace ReShade.Setup
 		{
 			string[] args = Environment.GetCommandLineArgs();
 
-			if (args.Length == 2 && File.Exists(args[1]))
+			if (args.Length > 2)
+			{
+				this.mElevated = args[2].StartsWith("ElEVATED");
+
+				if (this.mElevated)
+				{
+					this.Top = Double.Parse(args[2].Substring(args[2].IndexOf('|') + 1, args[2].IndexOf(']') - args[2].IndexOf('|') - 1));
+					this.Left = Double.Parse(args[2].Substring(args[2].IndexOf('[') + 1, args[2].IndexOf('|') - args[2].IndexOf('[') - 1));
+				}
+			}
+			if (args.Length > 1 && File.Exists(args[1]))
 			{
 				Install(args[1]);
 			}
@@ -60,10 +72,7 @@ namespace ReShade.Setup
 			}
 			else if (!String.IsNullOrEmpty(this.mTargetPath))
 			{
-				ProcessStartInfo info = new ProcessStartInfo(this.mTargetPath);
-				info.WorkingDirectory = Path.GetDirectoryName(this.mTargetPath);
-
-				Process.Start(info);
+				Process.Start(new ProcessStartInfo(this.mTargetPath) { WorkingDirectory = Path.GetDirectoryName(this.mTargetPath) });
 
 				Close();
 			}
@@ -84,6 +93,14 @@ namespace ReShade.Setup
 
 		public void Install(string path)
 		{
+			if (!this.mElevated && !DirectoryHelper.IsWritable(Path.GetDirectoryName(path)))
+			{
+				Process.Start(new ProcessStartInfo(Assembly.GetExecutingAssembly().Location, "\"" + path + "\" \"ElEVATED[" + this.Left.ToString() + "|" + this.Top.ToString() + "]\"") { Verb = "runas" });
+
+				Close();
+				return;
+			}
+
 			if (Thread.CurrentThread == this.Dispatcher.Thread)
 			{
 				new Thread(() => { Install(path); }).Start();
@@ -196,7 +213,22 @@ namespace ReShade.Setup
 
 				if (File.Exists(pathModuleFx))
 				{
-					File.Delete(pathModuleFx);
+					try
+					{
+						File.Delete(pathModuleFx);
+					}
+					catch
+					{
+						this.Dispatcher.Invoke(new Action(() =>
+						{
+							this.mFinished = true;
+							this.Title = "Failed!";
+							this.Message.Content = "Unable to delete existing installation.";
+							this.Progress.Visibility = Visibility.Collapsed;
+						}));
+
+						return;
+					}
 				}
 			}
 
@@ -254,7 +286,7 @@ namespace ReShade.Setup
 						File.Copy(sourcePath, destinationPath, true);
 					}
 				}
-				catch (IOException)
+				catch
 				{
 					this.Dispatcher.Invoke(new Action(() =>
 					{

@@ -39,5 +39,17 @@ namespace System.IO
 				}
 			}
 		}
+		public static bool IsWritable(string destDirName)
+		{
+			try
+			{
+				File.Create(Path.Combine(destDirName, Path.GetRandomFileName()), 1, FileOptions.DeleteOnClose);
+				return true;
+			}
+			catch
+			{
+				return false;
+			}
+		}
 	}
 }
