@@ -1,23 +1,23 @@
-﻿<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Class="ReShade.Setup.Wizard" xmlns:spark="clr-namespace:WPFSpark" Title="Welcome" Height="146" Width="500" WindowStyle="SingleBorderWindow" ResizeMode="NoResize" Loaded="OnLoaded" Closing="OnClosing" SourceInitialized="OnSourceInitialized">
-    <DockPanel LastChildFill="True">
-        <Border x:Name="ApiGroup" DockPanel.Dock="Bottom" IsEnabled="False" VerticalAlignment="Top" Margin="5,0,5,5" BorderThickness="1" CornerRadius="3" Padding="5" BorderBrush="White">
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                <RadioButton x:Name="ApiAuto" Content="Autodetect" IsChecked="True" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,0" />
-                <RadioButton x:Name="ApiDirect3D8" Content="Direct3D 8" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="8,0,0,0" Checked="OnApiChecked" />
-                <RadioButton x:Name="ApiDirect3D9" Content="Direct3D 9" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="8,0,0,0" Checked="OnApiChecked" />
-                <RadioButton x:Name="ApiDirectXGI" Content="Direct3D 10/11" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="8,0,0,0" Checked="OnApiChecked" />
-                <RadioButton x:Name="ApiOpenGL" Content="OpenGL" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="8,0,0,0" Checked="OnApiChecked" />
-            </StackPanel>
-        </Border>
-        <Button x:Name="Button" DockPanel.Dock="Top" Margin="5,5,5,5" Click="OnButton">
-            <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Width="auto">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <Label x:Name="Message" Grid.Column="0" VerticalContentAlignment="Center" Content="Select Game" />
-                <spark:SprocketControl x:Name="Progress" Grid.Column="1" VerticalContentAlignment="Center" Width="30" Height="30" TickColor="Black" TickWidth="3" TickCount="30" StartAngle="-90" IsIndeterminate="False" Interval="30" Visibility="Collapsed" />
-            </Grid>
-        </Button>
-    </DockPanel>
+﻿<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Class="ReShade.Setup.Wizard" xmlns:spark="clr-namespace:WPFSpark" Title="Welcome" Height="146" Width="500" WindowStyle="SingleBorderWindow" ResizeMode="NoResize" SourceInitialized="OnWindowInit" Loaded="OnWindowLoaded" Closing="OnWindowClosing">
+	<DockPanel LastChildFill="True">
+		<Border x:Name="ApiGroup" DockPanel.Dock="Bottom" IsEnabled="False" VerticalAlignment="Top" Margin="5,0,5,5" BorderThickness="1" CornerRadius="3" Padding="5" BorderBrush="White">
+			<StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+				<RadioButton x:Name="ApiAuto" Content="Autodetect" IsChecked="True" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,0" />
+				<RadioButton x:Name="ApiDirect3D8" Content="Direct3D 8" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="8,0,0,0" Checked="OnApiChecked" />
+				<RadioButton x:Name="ApiDirect3D9" Content="Direct3D 9" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="8,0,0,0" Checked="OnApiChecked" />
+				<RadioButton x:Name="ApiDirectXGI" Content="Direct3D 10/11" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="8,0,0,0" Checked="OnApiChecked" />
+				<RadioButton x:Name="ApiOpenGL" Content="OpenGL" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="8,0,0,0" Checked="OnApiChecked" />
+			</StackPanel>
+		</Border>
+		<Button x:Name="Button" DockPanel.Dock="Top" Margin="5,5,5,5" AllowDrop="True" Click="OnButtonClick" Drop="OnButtonDragDrop">
+			<Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Width="auto">
+				<Grid.ColumnDefinitions>
+					<ColumnDefinition Width="*" />
+					<ColumnDefinition Width="*" />
+				</Grid.ColumnDefinitions>
+				<Label x:Name="Message" Grid.Column="0" VerticalContentAlignment="Center" Content="Select Game" />
+				<spark:SprocketControl x:Name="Progress" Grid.Column="1" VerticalContentAlignment="Center" Width="30" Height="30" TickColor="Black" TickWidth="3" TickCount="30" StartAngle="-90" IsIndeterminate="False" Interval="30" Visibility="Collapsed" />
+			</Grid>
+		</Button>
+	</DockPanel>
 </Window>

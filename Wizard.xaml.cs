@@ -22,28 +22,43 @@ namespace ReShade.Setup
 		private string mTargetPath = null;
 		private ManualResetEventSlim mApiCondition = new ManualResetEventSlim();
 
-		private void OnSourceInitialized(object sender, EventArgs e)
+		private void OnWindowInit(object sender, EventArgs e)
 		{
 			Glass.RemoveIcon(this);
 			Glass.ExtendFrame(this);
 		}
-		private void OnLoaded(object sender, RoutedEventArgs e)
+		private void OnWindowLoaded(object sender, RoutedEventArgs e)
 		{
 			string[] args = Environment.GetCommandLineArgs();
 
 			if (args.Length == 2 && File.Exists(args[1]))
 			{
-				new Thread(() => { Install(args[1]); }).Start();
+				Install(args[1]);
 			}
 		}
-		private void OnClosing(object sender, CancelEventArgs e)
+		private void OnWindowClosing(object sender, CancelEventArgs e)
 		{
 			this.mFinished = true;
 			this.mApiCondition.Set();
 		}
-		private void OnButton(object sender, RoutedEventArgs e)
+
+		private void OnButtonClick(object sender, RoutedEventArgs e)
 		{
-			if (this.mFinished && !String.IsNullOrEmpty(this.mTargetPath))
+			if (!this.mFinished)
+			{
+				OpenFileDialog dlg = new OpenFileDialog();
+				dlg.Filter = "Applications|*.exe";
+				dlg.DefaultExt = ".exe";
+				dlg.Multiselect = false;
+				dlg.ValidateNames = true;
+				dlg.CheckFileExists = true;
+
+				if (dlg.ShowDialog(this) == true)
+				{
+					Install(dlg.FileName);
+				}
+			}
+			else if (!String.IsNullOrEmpty(this.mTargetPath))
 			{
 				ProcessStartInfo info = new ProcessStartInfo(this.mTargetPath);
 				info.WorkingDirectory = Path.GetDirectoryName(this.mTargetPath);
@@ -51,21 +66,15 @@ namespace ReShade.Setup
 				Process.Start(info);
 
 				Close();
-				return;
 			}
-
-			OpenFileDialog dlg = new OpenFileDialog();
-			dlg.Filter = "Applications|*.exe";
-			dlg.DefaultExt = ".exe";
-			dlg.Multiselect = false;
-			dlg.ValidateNames = true;
-			dlg.CheckFileExists = true;
-
-			bool? result = dlg.ShowDialog(this);
-
-			if (result.HasValue && result.Value)
+		}
+		private void OnButtonDragDrop(object sender, DragEventArgs e)
+		{
+			if (!this.mFinished && e.Data.GetDataPresent(DataFormats.FileDrop))
 			{
-				new Thread(() => { Install(dlg.FileName); }).Start();
+				string[] files = e.Data.GetData(DataFormats.FileDrop, true) as string[];
+
+				Install(files[0]);
 			}
 		}
 		private void OnApiChecked(object sender, RoutedEventArgs e)
@@ -75,9 +84,15 @@ namespace ReShade.Setup
 
 		public void Install(string path)
 		{
+			if (Thread.CurrentThread == this.Dispatcher.Thread)
+			{
+				new Thread(() => { Install(path); }).Start();
+				return;
+			}
+
 			FileVersionInfo info = FileVersionInfo.GetVersionInfo(path);
 			string name = !String.IsNullOrEmpty(info.ProductName) ? info.ProductName : Path.GetFileNameWithoutExtension(path);
-	
+
 			this.Dispatcher.Invoke(new Action(() =>
 			{
 				this.mTargetPath = path;
@@ -229,7 +244,7 @@ namespace ReShade.Setup
 				try
 				{
 					Directory.CreateDirectory(Path.GetDirectoryName(destinationPath));
-					
+
 					if (Directory.Exists(sourcePath))
 					{
 						DirectoryHelper.Copy(sourcePath, destinationPath, true, true);
