@@ -2,14 +2,14 @@
 	<DockPanel LastChildFill="True">
 		<Border x:Name="ApiGroup" DockPanel.Dock="Bottom" IsEnabled="False" VerticalAlignment="Top" Margin="5,0,5,5" BorderThickness="1" CornerRadius="3" Padding="5" BorderBrush="White">
 			<StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-				<RadioButton x:Name="ApiAuto" Content="Autodetect" IsChecked="True" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,0" />
+				<RadioButton x:Name="ApiAuto" Content="Auto-detect" IsChecked="True" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,0" />
 				<RadioButton x:Name="ApiDirect3D8" Content="Direct3D 8" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="8,0,0,0" Checked="OnApiChecked" />
 				<RadioButton x:Name="ApiDirect3D9" Content="Direct3D 9" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="8,0,0,0" Checked="OnApiChecked" />
-				<RadioButton x:Name="ApiDirectXGI" Content="Direct3D 10/11" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="8,0,0,0" Checked="OnApiChecked" />
+				<RadioButton x:Name="ApiDirectXGI" Content="Direct3D 10+" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="8,0,0,0" Checked="OnApiChecked" />
 				<RadioButton x:Name="ApiOpenGL" Content="OpenGL" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="8,0,0,0" Checked="OnApiChecked" />
 			</StackPanel>
 		</Border>
-		<Button x:Name="Button" DockPanel.Dock="Top" Margin="5,5,5,5" AllowDrop="True" Click="OnButtonClick" Drop="OnButtonDragDrop">
+		<Button x:Name="SetupButton" DockPanel.Dock="Top" Margin="5,5,5,5" AllowDrop="True" Click="OnSetupButtonClick" Drop="OnSetupButtonDragDrop">
 			<Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Width="auto">
 				<Grid.ColumnDefinitions>
 					<ColumnDefinition Width="*" />

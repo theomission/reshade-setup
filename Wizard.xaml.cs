@@ -7,40 +7,38 @@ using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Windows;
-using System.Windows.Documents;
 using Microsoft.Win32;
 
 namespace ReShade.Setup
 {
-	public partial class Wizard : Window
+	public partial class Wizard
 	{
+		bool _finished, _elevated;
+		string _targetPath;
+		readonly ManualResetEventSlim _apiCondition = new ManualResetEventSlim();
+
 		public Wizard()
 		{
 			InitializeComponent();
 		}
 
-		private bool mElevated = false;
-		private bool mFinished = false;
-		private string mTargetPath = null;
-		private ManualResetEventSlim mApiCondition = new ManualResetEventSlim();
-
-		private void OnWindowInit(object sender, EventArgs e)
+		void OnWindowInit(object sender, EventArgs e)
 		{
 			Glass.RemoveIcon(this);
 			Glass.ExtendFrame(this);
 		}
-		private void OnWindowLoaded(object sender, RoutedEventArgs e)
+		void OnWindowLoaded(object sender, RoutedEventArgs e)
 		{
-			string[] args = Environment.GetCommandLineArgs();
+			var args = Environment.GetCommandLineArgs();
 
 			if (args.Length > 2)
 			{
-				this.mElevated = args[2].StartsWith("ElEVATED");
+				_elevated = args[2].StartsWith("ELEVATED");
 
-				if (this.mElevated)
+				if (_elevated)
 				{
-					this.Top = Double.Parse(args[2].Substring(args[2].IndexOf('|') + 1, args[2].IndexOf(']') - args[2].IndexOf('|') - 1));
-					this.Left = Double.Parse(args[2].Substring(args[2].IndexOf('[') + 1, args[2].IndexOf('|') - args[2].IndexOf('[') - 1));
+					Top = double.Parse(args[2].Substring(args[2].IndexOf('|') + 1, args[2].IndexOf(']') - args[2].IndexOf('|') - 1));
+					Left = double.Parse(args[2].Substring(args[2].IndexOf('[') + 1, args[2].IndexOf('|') - args[2].IndexOf('[') - 1));
 				}
 			}
 			if (args.Length > 1 && File.Exists(args[1]))
@@ -48,83 +46,93 @@ namespace ReShade.Setup
 				Install(args[1]);
 			}
 		}
-		private void OnWindowClosing(object sender, CancelEventArgs e)
+		void OnWindowClosing(object sender, CancelEventArgs e)
 		{
-			this.mFinished = true;
-			this.mApiCondition.Set();
+			_finished = true;
+			_apiCondition.Set();
 		}
 
-		private void OnButtonClick(object sender, RoutedEventArgs e)
+		void OnApiChecked(object sender, RoutedEventArgs e)
 		{
-			if (!this.mFinished)
+			_apiCondition.Set();
+		}
+		void OnSetupButtonClick(object sender, RoutedEventArgs e)
+		{
+			if (!_finished)
 			{
-				OpenFileDialog dlg = new OpenFileDialog();
-				dlg.Filter = "Applications|*.exe";
-				dlg.DefaultExt = ".exe";
-				dlg.Multiselect = false;
-				dlg.ValidateNames = true;
-				dlg.CheckFileExists = true;
+				var dlg = new OpenFileDialog
+				{
+					Filter = "Applications|*.exe",
+					DefaultExt = ".exe",
+					Multiselect = false,
+					ValidateNames = true,
+					CheckFileExists = true
+				};
 
 				if (dlg.ShowDialog(this) == true)
 				{
 					Install(dlg.FileName);
 				}
 			}
-			else if (!String.IsNullOrEmpty(this.mTargetPath))
+			else if (!string.IsNullOrEmpty(_targetPath))
 			{
-				Process.Start(new ProcessStartInfo(this.mTargetPath) { WorkingDirectory = Path.GetDirectoryName(this.mTargetPath) });
+				Process.Start(new ProcessStartInfo(_targetPath) { WorkingDirectory = Path.GetDirectoryName(_targetPath) });
 
 				Close();
 			}
 		}
-		private void OnButtonDragDrop(object sender, DragEventArgs e)
+		void OnSetupButtonDragDrop(object sender, DragEventArgs e)
 		{
-			if (!this.mFinished && e.Data.GetDataPresent(DataFormats.FileDrop))
+			if (_finished || !e.Data.GetDataPresent(DataFormats.FileDrop))
 			{
-				string[] files = e.Data.GetData(DataFormats.FileDrop, true) as string[];
+				return;
+			}
 
+			var files = e.Data.GetData(DataFormats.FileDrop, true) as string[];
+
+			if (files != null)
+			{
 				Install(files[0]);
 			}
 		}
-		private void OnApiChecked(object sender, RoutedEventArgs e)
-		{
-			this.mApiCondition.Set();
-		}
 
-		public void Install(string path)
+		private void Install(string path)
 		{
-			if (!this.mElevated && !DirectoryHelper.IsWritable(Path.GetDirectoryName(path)))
+			if (!_elevated && !DirectoryHelper.IsWritable(Path.GetDirectoryName(path)))
 			{
-				Process.Start(new ProcessStartInfo(Assembly.GetExecutingAssembly().Location, "\"" + path + "\" \"ElEVATED[" + this.Left.ToString() + "|" + this.Top.ToString() + "]\"") { Verb = "runas" });
+				Process.Start(
+					new ProcessStartInfo(Assembly.GetExecutingAssembly().Location,
+					"\"" + path + "\" \"ELEVATED[" + Left + "|" + Top + "]\"") { Verb = "runas" });
 
 				Close();
 				return;
 			}
 
-			if (Thread.CurrentThread == this.Dispatcher.Thread)
+			if (Thread.CurrentThread == Dispatcher.Thread)
 			{
 				new Thread(() => { Install(path); }).Start();
 				return;
 			}
 
-			FileVersionInfo info = FileVersionInfo.GetVersionInfo(path);
-			string name = !String.IsNullOrEmpty(info.ProductName) ? info.ProductName : Path.GetFileNameWithoutExtension(path);
+			var info = FileVersionInfo.GetVersionInfo(path);
+			var name = !string.IsNullOrEmpty(info.ProductName) ? info.ProductName : Path.GetFileNameWithoutExtension(path);
 
-			this.Dispatcher.Invoke(new Action(() =>
+			Dispatcher.Invoke(new Action(() =>
 			{
-				this.mTargetPath = path;
-				this.Title = "Installing to " + name + " ...";
-				this.Button.IsEnabled = false;
-				this.Message.Content = "Analyzing " + name + " ...";
-				this.Progress.Visibility = Visibility.Visible;
-				this.Progress.IsIndeterminate = true;
+				_targetPath = path;
+				Title = "Installing to " + name + " ...";
+				SetupButton.IsEnabled = false;
+				Message.Content = "Analyzing " + name + " ...";
+				Progress.Visibility = Visibility.Visible;
+				Progress.IsIndeterminate = true;
 			}));
 
 			#region Analyze Game
-			PEInfo exeInfo = new PEInfo(path);
-			bool is64Bit = exeInfo.Type == PEInfo.BinaryType.IMAGE_FILE_MACHINE_AMD64;
 
-			string nameModule = exeInfo.Modules.FirstOrDefault(s =>
+			var exeInfo = new PEInfo(path);
+			var is64Bit = exeInfo.Type == PEInfo.BinaryType.IMAGE_FILE_MACHINE_AMD64;
+
+			var nameModule = exeInfo.Modules.FirstOrDefault(s =>
 				s.StartsWith("d3d8", StringComparison.OrdinalIgnoreCase) ||
 				s.StartsWith("d3d9", StringComparison.OrdinalIgnoreCase) ||
 				s.StartsWith("dxgi", StringComparison.OrdinalIgnoreCase) ||
@@ -132,84 +140,86 @@ namespace ReShade.Setup
 
 			if (nameModule == null)
 			{
-				this.Dispatcher.Invoke(new Action(() =>
+				Dispatcher.Invoke(new Action(() =>
 				{
-					this.Title = "Warning!";
-					this.Message.Content = "Auto-detection failed. Please select:";
-					this.Progress.Visibility = Visibility.Collapsed;
-					this.ApiGroup.IsEnabled = true;
+					Title = "Warning!";
+					Message.Content = "Auto-detection failed. Please select:";
+					Progress.Visibility = Visibility.Collapsed;
+					ApiGroup.IsEnabled = true;
 				}));
 
-				this.mApiCondition.Wait();
+				_apiCondition.Wait();
 
-				this.Dispatcher.Invoke(new Action(() =>
+				Dispatcher.Invoke(new Action(() =>
 				{
-					if (this.ApiDirect3D8.IsChecked.Value)
+					if (ApiDirect3D8.IsChecked == true)
 					{
 						nameModule = "d3d8.dll";
 					}
-					else if (this.ApiDirect3D9.IsChecked.Value)
+					else if (ApiDirect3D9.IsChecked == true)
 					{
 						nameModule = "d3d9.dll";
 					}
-					else if (this.ApiDirectXGI.IsChecked.Value)
+					else if (ApiDirectXGI.IsChecked == true)
 					{
 						nameModule = "dxgi.dll";
 					}
-					else if (this.ApiOpenGL.IsChecked.Value)
+					else if (ApiOpenGL.IsChecked == true)
 					{
 						nameModule = "opengl32.dll";
 					}
 
-					this.ApiGroup.IsEnabled = false;
+					ApiGroup.IsEnabled = false;
 				}));
 			}
 
-			if (nameModule == null || this.mFinished)
+			if (nameModule == null || _finished)
 			{
 				return;
 			}
 
-			this.Dispatcher.Invoke(new Action(() =>
+			Dispatcher.Invoke(new Action(() =>
 			{
 				if (nameModule.StartsWith("d3d8", StringComparison.InvariantCultureIgnoreCase))
 				{
-					this.ApiDirect3D8.IsChecked = true;
+					ApiDirect3D8.IsChecked = true;
 				}
 				if (nameModule.StartsWith("d3d9", StringComparison.InvariantCultureIgnoreCase))
 				{
-					this.ApiDirect3D9.IsChecked = true;
+					ApiDirect3D9.IsChecked = true;
 				}
 				if (nameModule.StartsWith("dxgi", StringComparison.InvariantCultureIgnoreCase))
 				{
-					this.ApiDirectXGI.IsChecked = true;
+					ApiDirectXGI.IsChecked = true;
 				}
 				if (nameModule.StartsWith("opengl32", StringComparison.InvariantCultureIgnoreCase))
 				{
-					this.ApiOpenGL.IsChecked = true;
+					ApiOpenGL.IsChecked = true;
 				}
 			}));
+
 			#endregion
 
-			string pathDll = is64Bit ? "ReShade64.dll" : "ReShade32.dll";
-			string pathModule = Path.Combine(Path.GetDirectoryName(path), nameModule);
+			var pathDll = is64Bit ? "ReShade64.dll" : "ReShade32.dll";
+			var pathTargetDirectory = Path.GetDirectoryName(path);
+			var pathModule = Path.Combine(pathTargetDirectory, nameModule);
 
 			if (File.Exists(pathModule))
 			{
 				if (MessageBox.Show("Do you want to overwrite the existing installation?", "Existing installation found.", MessageBoxButton.YesNo) != MessageBoxResult.Yes)
 				{
-					this.Dispatcher.Invoke(new Action(() =>
+					Dispatcher.Invoke(new Action(() =>
 					{
-						this.mFinished = true;
-						this.Title = "Failed!";
-						this.Message.Content = "Existing installation found.";
-						this.Progress.Visibility = Visibility.Collapsed;
+						_finished = true;
+						Title = "Failed!";
+						Message.Content = "Existing installation found.";
+						Progress.Visibility = Visibility.Collapsed;
 					}));
 
 					return;
 				}
 
-				string pathModuleFx = Path.ChangeExtension(pathModule, "fx");
+				var pathModuleFx = Path.ChangeExtension(pathModule, "fx");
 
 				if (File.Exists(pathModuleFx))
 				{
@@ -219,12 +229,12 @@ namespace ReShade.Setup
 					}
 					catch
 					{
-						this.Dispatcher.Invoke(new Action(() =>
+						Dispatcher.Invoke(new Action(() =>
 						{
-							this.mFinished = true;
-							this.Title = "Failed!";
-							this.Message.Content = "Unable to delete existing installation.";
-							this.Progress.Visibility = Visibility.Collapsed;
+							_finished = true;
+							Title = "Failed!";
+							Message.Content = "Unable to delete existing installation.";
+							Progress.Visibility = Visibility.Collapsed;
 						}));
 
 						return;
@@ -233,44 +243,44 @@ namespace ReShade.Setup
 			}
 
 			#region Copy Files
-			List<Tuple<string, string>> files = new List<Tuple<string, string>>();
-			files.Add(new Tuple<string, string>(pathDll, pathModule));
+
+			var files = new List<Tuple<string, string>> { new Tuple<string, string>(pathDll, pathModule) };
 
 			if (File.Exists("ReShade.fx"))
 			{
-				files.Add(new Tuple<string, string>("ReShade.fx", Path.Combine(Path.GetDirectoryName(pathModule), "ReShade.fx")));
+				files.Add(new Tuple<string, string>("ReShade.fx", Path.Combine(pathTargetDirectory, "ReShade.fx")));
 			}
 			if (File.Exists("Sweet.fx"))
 			{
-				files.Add(new Tuple<string, string>("Sweet.fx", Path.Combine(Path.GetDirectoryName(pathModule), "Sweet.fx")));
+				files.Add(new Tuple<string, string>("Sweet.fx", Path.Combine(pathTargetDirectory, "Sweet.fx")));
 			}
 
 			if (Directory.Exists("ReShade"))
 			{
-				foreach (string file in Directory.EnumerateFiles("ReShade", "*", SearchOption.AllDirectories).Select(f => f))
-				{
-					files.Add(new Tuple<string, string>(file, Path.Combine(Path.GetDirectoryName(pathModule), file)));
-				}
+				files.AddRange(
+					Directory.EnumerateFiles("ReShade", "*", SearchOption.AllDirectories)
+						.Select(f => f)
+						.Select(file => new Tuple<string, string>(file, Path.Combine(pathTargetDirectory, file))));
 			}
 			if (Directory.Exists("SweetFX"))
 			{
-				foreach (string file in Directory.EnumerateFiles("SweetFX", "*", SearchOption.AllDirectories).Select(f => f))
-				{
-					files.Add(new Tuple<string, string>(file, Path.Combine(Path.GetDirectoryName(pathModule), file)));
-				}
+				files.AddRange(
+					Directory.EnumerateFiles("SweetFX", "*", SearchOption.AllDirectories)
+						.Select(f => f)
+						.Select(file => new Tuple<string, string>(file, Path.Combine(pathTargetDirectory, file))));
 			}
 
-			for (int i = 0; i < files.Count; ++i)
+			for (var i = 0; i < files.Count; i++)
 			{
-				string sourcePath = files[i].Item1;
-				string destinationPath = files[i].Item2;
+				var sourcePath = files[i].Item1;
+				var destinationPath = files[i].Item2;
 
-				this.Dispatcher.Invoke(new Action(() =>
+				Dispatcher.Invoke(new Action(() =>
 				{
-					this.Message.Content = "Installing \"" + sourcePath + "\" ...";
-					this.Progress.IsIndeterminate = false;
-					this.Progress.Progress = i * 100.0 / files.Count;
-					this.Progress.Visibility = Visibility.Visible;
+					Message.Content = "Installing \"" + sourcePath + "\" ...";
+					Progress.IsIndeterminate = false;
+					Progress.Progress = i * 100.0 / files.Count;
+					Progress.Visibility = Visibility.Visible;
 				}));
 
 				try
@@ -288,26 +298,27 @@ namespace ReShade.Setup
 				}
 				catch
 				{
-					this.Dispatcher.Invoke(new Action(() =>
+					Dispatcher.Invoke(new Action(() =>
 					{
-						this.mFinished = true;
-						this.Title = "Failed!";
-						this.Message.Content = "Unable to copy file \"" + sourcePath + "\".";
-						this.Progress.Visibility = Visibility.Collapsed;
+						_finished = true;
+						Title = "Failed!";
+						Message.Content = "Unable to copy file \"" + sourcePath + "\".";
+						Progress.Visibility = Visibility.Collapsed;
 					}));
 
 					return;
 				}
 			}
+
 			#endregion
 
-			this.Dispatcher.Invoke(new Action(() =>
+			Dispatcher.Invoke(new Action(() =>
 			{
-				this.mFinished = true;
-				this.Title = "Success!";
-				this.Button.IsEnabled = true;
-				this.Message.Content = "Run " + name;
-				this.Progress.Visibility = Visibility.Collapsed;
+				_finished = true;
+				Title = "Success!";
+				SetupButton.IsEnabled = true;
+				Message.Content = "Run " + name;
+				Progress.Visibility = Visibility.Collapsed;
 			}));
 		}
 	}
