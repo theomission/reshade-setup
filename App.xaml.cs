@@ -1,13 +1,12 @@
-﻿using System;
-using System.IO;
+﻿using System.IO;
 using System.Reflection;
 using System.Windows;
 
 namespace ReShade.Setup
 {
-	public partial class App : Application
+	public partial class App
 	{
-		private void OnStartup(object sender, StartupEventArgs e)
+		void OnStartup(object sender, StartupEventArgs e)
 		{
 			Directory.SetCurrentDirectory(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location));
 		}
